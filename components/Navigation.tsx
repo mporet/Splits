@@ -13,8 +13,11 @@ export function Navigation() {
     return (
         <nav style={{ padding: "1rem 2rem", borderBottom: "1px solid var(--card-border)", background: "var(--card-bg)", backdropFilter: "blur(var(--glass-blur))", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-                <Link href="/" style={{ fontSize: "1.5rem", fontWeight: "bold", background: "linear-gradient(135deg, #fff, #94a3b8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                    Splits
+                <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.5rem", fontWeight: "bold", textDecoration: "none" }}>
+                    <span style={{ fontSize: "1.5rem" }}>🤸‍♀️</span>
+                    <span style={{ background: "linear-gradient(135deg, #fff, #94a3b8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                        Splits
+                    </span>
                 </Link>
             </div>
             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>

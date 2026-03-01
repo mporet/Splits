@@ -88,7 +88,9 @@ function HomeContent() {
         <div className="container" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "2rem", padding: "2rem 0" }}>
             <div className="glass-card" style={{ maxWidth: "450px", width: "100%" }}>
                 <div className="text-center mb-4">
-                    <h1 className="title" style={{ fontSize: "2.5rem" }}>Splits</h1>
+                    <h1 className="title" style={{ fontSize: "2.5rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
+                        <span style={{ fontSize: "2.5rem" }}>🤸‍♀️</span> Splits
+                    </h1>
                     <p className="subtitle mt-1">Settle up your expenses easily</p>
                 </div>
 

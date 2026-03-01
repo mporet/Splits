@@ -193,56 +193,58 @@ export default function GroupPage() {
                 </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
-                {/* Participants Sidebar */}
-                <div className="glass-card">
-                    <h3 style={{ marginBottom: "1rem", borderBottom: "1px solid var(--card-border)", paddingBottom: "0.5rem" }}>Participants</h3>
-                    <ul style={{ listStyle: "none", padding: 0 }}>
+            {/* Participants Collapsible Menu */}
+            <div className="glass-card mb-4">
+                <details>
+                    <summary style={{ cursor: "pointer", fontWeight: "bold", fontSize: "1.1rem", outline: "none" }}>
+                        👥 View Participants ({group.participants.length})
+                    </summary>
+                    <ul style={{ listStyle: "none", padding: 0, marginTop: "1rem", borderTop: "1px solid var(--card-border)", paddingTop: "0.5rem" }}>
                         {group.participants.map(p => (
                             <li key={p.id} style={{ padding: "0.5rem 0", color: "var(--foreground)" }}>
                                 👤 {p.name}
                             </li>
                         ))}
                     </ul>
-                </div>
+                </details>
+            </div>
 
-                {/* Expenses List */}
-                <div>
-                    <h3 style={{ marginBottom: "1rem" }}>Expenses</h3>
-                    {group.expenses.length === 0 ? (
-                        <div className="glass-card text-center text-muted">
-                            No expenses yet. Add one to get started!
-                        </div>
-                    ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            {group.expenses.map((expense: ExpenseExtended) => (
-                                <div key={expense.id} className="glass-card" style={{ padding: "1.5rem" }}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h4 style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{expense.description}</h4>
-                                        <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--primary)" }}>
-                                            {expense.currency} {(expense.amount / 100).toFixed(2)}
-                                        </span>
-                                    </div>
-
-                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                                        <p>
-                                            <strong>Paid by:</strong> {expense.payers.map((p: any) => `${p.participant.name} (${expense.currency} ${(p.amountPaid / 100).toFixed(2)})`).join(", ")}
-                                        </p>
-                                        <p className="mt-1">
-                                            <strong>Split between:</strong> {expense.splits.map((s: any) => s.participant.name).join(", ")}
-                                        </p>
-                                    </div>
-
-                                    {isAdmin && !group.isClosed && (
-                                        <div style={{ marginTop: "1rem", textAlign: "right" }}>
-                                            <button onClick={() => deleteExpense(expense.id)} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Delete</button>
-                                        </div>
-                                    )}
+            {/* Expenses List */}
+            <div>
+                <h3 style={{ marginBottom: "1rem" }}>Expenses</h3>
+                {group.expenses.length === 0 ? (
+                    <div className="glass-card text-center text-muted">
+                        No expenses yet. Add one to get started!
+                    </div>
+                ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        {group.expenses.map((expense: ExpenseExtended) => (
+                            <div key={expense.id} className="glass-card" style={{ padding: "1.5rem" }}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{expense.description}</h4>
+                                    <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--primary)" }}>
+                                        {expense.currency} {(expense.amount / 100).toFixed(2)}
+                                    </span>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+
+                                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                                    <p>
+                                        <strong>Paid by:</strong> {expense.payers.map((p: any) => `${p.participant.name} (${expense.currency} ${(p.amountPaid / 100).toFixed(2)})`).join(", ")}
+                                    </p>
+                                    <p className="mt-1">
+                                        <strong>Split between:</strong> {expense.splits.map((s: any) => s.participant.name).join(", ")}
+                                    </p>
+                                </div>
+
+                                {isAdmin && !group.isClosed && (
+                                    <div style={{ marginTop: "1rem", textAlign: "right" }}>
+                                        <button onClick={() => deleteExpense(expense.id)} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Delete</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
