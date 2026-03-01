@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  splits-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: splits-app:latest
+    container_name: splits-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # Update these paths to use the persistent volume
+      - DATABASE_URL=file:/app/data/prod.db
+      - NEXTAUTH_URL=http://localhost:3000 # Change this to your server IP or domain
+      # Make sure to replace this secret!
+      - NEXTAUTH_SECRET=/Rzt/9vE4Cj787iJ0YBNy/6J9z/e4HHZ23qPaJTnTX0=
+    volumes:
+      # Mount the host directory to /app/data inside the container
+      - splits-data:/app/data
+
+volumes:
+  splits-data:
