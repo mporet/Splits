@@ -237,7 +237,8 @@ export default function GroupPage() {
                                 </div>
 
                                 {isAdmin && !group.isClosed && (
-                                    <div style={{ marginTop: "1rem", textAlign: "right" }}>
+                                    <div style={{ marginTop: "1rem", textAlign: "right", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+                                        <Link href={`/group/${id}/expenses/${expense.id}/edit`} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Edit</Link>
                                         <button onClick={() => deleteExpense(expense.id)} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Delete</button>
                                     </div>
                                 )}
