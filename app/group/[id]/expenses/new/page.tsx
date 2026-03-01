@@ -202,11 +202,11 @@ export default function AddExpensePage() {
                 </div>
 
                 <div className="input-group flex gap-4">
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 2 }}>
                         <label className="input-label">Total Amount</label>
                         <input type="number" step="0.01" min="0" className="input-field" required placeholder="0.00" value={amountInput} onChange={e => setAmountInput(e.target.value)} />
                     </div>
-                    <div style={{ width: "100%" }}>
+                    <div style={{ flex: 1 }}>
                         <label className="input-label">Currency</label>
                         <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
                             {availableCurrencies.map(c => <option key={c} value={c}>{formatCurrencyDisplayName(c)}</option>)}

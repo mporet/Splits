@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/db";
+import { generateHumanReadableId } from "@/lib/generateId";
 
 // GET all groups owned by the logged in admin
 export async function GET() {
@@ -37,8 +38,28 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
         }
 
+        let newGroupId = "";
+        let isIdUnique = false;
+        let attempts = 0;
+
+        while (!isIdUnique && attempts < 5) {
+            newGroupId = generateHumanReadableId();
+            const existingGroup = await prisma.expenseGroup.findUnique({
+                where: { id: newGroupId }
+            });
+            if (!existingGroup) {
+                isIdUnique = true;
+            }
+            attempts++;
+        }
+
+        if (!isIdUnique) {
+            return NextResponse.json({ error: "Could not generate a unique group ID. Please try again." }, { status: 500 });
+        }
+
         const newGroup = await prisma.expenseGroup.create({
             data: {
+                id: newGroupId,
                 name,
                 passcode, // Storing in plain text for simplicity of sharing/ad-hoc events (per requirements usually ok for small adhoc apps, but could be hashed. I will leave as plain text for simplicity).
                 finalCurrency: finalCurrency || "USD",

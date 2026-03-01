@@ -25,9 +25,11 @@ export default function GroupPage() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [savedGroups, setSavedGroups] = useState<{ id: string, name: string }[]>([]);
 
     useEffect(() => {
         fetchGroup();
+        fetchSavedGroups();
     }, [id]);
 
     const fetchGroup = async () => {
@@ -48,6 +50,18 @@ export default function GroupPage() {
             setError("An error occurred");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchSavedGroups = async () => {
+        try {
+            const res = await fetch("/api/groups/saved");
+            if (res.ok) {
+                const data = await res.json();
+                setSavedGroups(data.groups || []);
+            }
+        } catch (err) {
+            console.error("Failed to load saved groups", err);
         }
     };
 
@@ -102,12 +116,50 @@ export default function GroupPage() {
 
     return (
         <div className="container">
-            <div className="header mb-4" style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+            <div className="header mb-4" style={{ display: "flex", flexWrap: "wrap", gap: "1rem", justifyContent: "space-between" }}>
                 <div>
-                    <h1 className="title">{group.name}</h1>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <h1 className="title">{group.name}</h1>
+                        {isAdmin && (
+                            <Link href={`/group/${id}/edit`} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", height: "fit-content" }}>
+                                ⚙️ Edit
+                            </Link>
+                        )}
+                        <button
+                            className="btn btn-secondary"
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", height: "fit-content", background: "var(--primary)", color: "white", border: "none" }}
+                            onClick={() => {
+                                const url = `${window.location.origin}/?groupId=${group.id}`;
+                                navigator.clipboard.writeText(url);
+                                alert("Link copied to clipboard!");
+                            }}
+                        >
+                            🔗 Share Group
+                        </button>
+                    </div>
                     <p className="subtitle">Group Details & Expenses</p>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    {/* Quick Switch Dropdown */}
+                    <div style={{ position: "relative" }}>
+                        <select
+                            className="input-field"
+                            style={{ padding: "0.5rem", height: "auto", cursor: "pointer", background: "var(--card-bg)" }}
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    router.push(`/group/${e.target.value}`);
+                                }
+                            }}
+                            value=""
+                        >
+                            <option value="" disabled>Switch Group...</option>
+                            {savedGroups.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                            <option value="/">View All Saved Groups</option>
+                        </select>
+                    </div>
+
                     {group.isClosed ? (
                         <>
                             <Link href={`/group/${id}/settlement`} className="btn btn-secondary" style={{ background: "var(--secondary)", color: "white", border: "none" }}>
@@ -163,7 +215,7 @@ export default function GroupPage() {
                         </div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            {group.expenses.map(expense => (
+                            {group.expenses.map((expense: ExpenseExtended) => (
                                 <div key={expense.id} className="glass-card" style={{ padding: "1.5rem" }}>
                                     <div className="flex justify-between items-center mb-2">
                                         <h4 style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{expense.description}</h4>
@@ -174,10 +226,10 @@ export default function GroupPage() {
 
                                     <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
                                         <p>
-                                            <strong>Paid by:</strong> {expense.payers.map(p => `${p.participant.name} (${expense.currency} ${(p.amountPaid / 100).toFixed(2)})`).join(", ")}
+                                            <strong>Paid by:</strong> {expense.payers.map((p: any) => `${p.participant.name} (${expense.currency} ${(p.amountPaid / 100).toFixed(2)})`).join(", ")}
                                         </p>
                                         <p className="mt-1">
-                                            <strong>Split between:</strong> {expense.splits.map(s => s.participant.name).join(", ")}
+                                            <strong>Split between:</strong> {expense.splits.map((s: any) => s.participant.name).join(", ")}
                                         </p>
                                     </div>
 
