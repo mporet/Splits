@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     }
 
     try {
-        const { name, passcode, participants } = await req.json();
+        const { name, passcode, participants, finalCurrency, defaultExpenseCurrency } = await req.json();
 
         if (!name || !passcode || !participants || !Array.isArray(participants)) {
             return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
@@ -41,6 +41,8 @@ export async function POST(req: Request) {
             data: {
                 name,
                 passcode, // Storing in plain text for simplicity of sharing/ad-hoc events (per requirements usually ok for small adhoc apps, but could be hashed. I will leave as plain text for simplicity).
+                finalCurrency: finalCurrency || "USD",
+                defaultExpenseCurrency: defaultExpenseCurrency || "USD",
                 adminId: session.user.id,
                 participants: {
                     create: participants.map((pName: string) => ({ name: pName }))

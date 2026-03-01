@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ExpenseGroup } from "@prisma/client";
+import { formatCurrencyDisplayName } from "@/lib/currencyFormat";
 
 type GroupWithCount = ExpenseGroup & { _count: { participants: number; expenses: number } };
 
@@ -19,15 +20,34 @@ export default function Dashboard() {
     const [isCreating, setIsCreating] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [newGroupPasscode, setNewGroupPasscode] = useState("");
+    const [newGroupCurrency, setNewGroupCurrency] = useState("USD");
+    const [newGroupExpenseCurrency, setNewGroupExpenseCurrency] = useState("USD");
     const [participantsText, setParticipantsText] = useState("");
+    const [availableCurrencies, setAvailableCurrencies] = useState<string[]>([]);
 
     useEffect(() => {
         if (status === "unauthenticated") {
             router.push("/");
         } else if (status === "authenticated") {
             fetchGroups();
+            fetchCurrencies();
         }
     }, [status, router]);
+
+    const fetchCurrencies = async () => {
+        try {
+            const res = await fetch("https://open.er-api.com/v6/latest/USD");
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.rates) {
+                    setAvailableCurrencies(Object.keys(data.rates).sort());
+                }
+            }
+        } catch (e) {
+            console.error("Failed to fetch currencies", e);
+            setAvailableCurrencies(["USD", "EUR", "GBP", "CAD", "AUD", "JPY"]);
+        }
+    };
 
     const fetchGroups = async () => {
         try {
@@ -57,6 +77,8 @@ export default function Dashboard() {
                 body: JSON.stringify({
                     name: newGroupName,
                     passcode: newGroupPasscode,
+                    finalCurrency: newGroupCurrency,
+                    defaultExpenseCurrency: newGroupExpenseCurrency,
                     participants: participantsList
                 })
             });
@@ -66,6 +88,8 @@ export default function Dashboard() {
                 setNewGroupName("");
                 setNewGroupPasscode("");
                 setParticipantsText("");
+                setNewGroupCurrency("USD");
+                setNewGroupExpenseCurrency("USD");
                 fetchGroups();
             }
         } catch (e) {
@@ -98,6 +122,18 @@ export default function Dashboard() {
                         <div className="input-group">
                             <label className="input-label">Passcode (For participants to join)</label>
                             <input type="text" className="input-field" value={newGroupPasscode} onChange={(e) => setNewGroupPasscode(e.target.value)} required placeholder="e.g. pizza123" />
+                        </div>
+                        <div className="input-group">
+                            <label className="input-label">Default Expense Currency</label>
+                            <select className="input-field" value={newGroupExpenseCurrency} onChange={(e) => setNewGroupExpenseCurrency(e.target.value)}>
+                                {availableCurrencies.map(c => <option key={c} value={c}>{formatCurrencyDisplayName(c)}</option>)}
+                            </select>
+                        </div>
+                        <div className="input-group">
+                            <label className="input-label">Settlement Currency (Final amount owed)</label>
+                            <select className="input-field" value={newGroupCurrency} onChange={(e) => setNewGroupCurrency(e.target.value)}>
+                                {availableCurrencies.map(c => <option key={c} value={c}>{formatCurrencyDisplayName(c)}</option>)}
+                            </select>
                         </div>
                         <div className="input-group">
                             <label className="input-label">Participants (Comma separated, including yourself if applicable)</label>

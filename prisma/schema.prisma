@@ -58,10 +58,11 @@ model VerificationToken {
 model ExpenseGroup {
   id            String             @id @default(cuid())
   adminId       String
-  name          String
-  passcode      String
-  finalCurrency String             @default("USD")
-  isClosed      Boolean            @default(false)
+  name                   String
+  passcode               String
+  finalCurrency          String             @default("USD")
+  defaultExpenseCurrency String             @default("USD")
+  isClosed               Boolean            @default(false)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 

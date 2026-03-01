@@ -68,6 +68,23 @@ export default function GroupPage() {
         }
     };
 
+    const reopenGroup = async () => {
+        if (!confirm("Are you sure you want to reopen this group? Participants will be able to add expenses again.")) return;
+
+        try {
+            const res = await fetch(`/api/groups/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isClosed: false })
+            });
+            if (res.ok) {
+                fetchGroup();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const deleteExpense = async (expenseId: string) => {
         if (!confirm("Delete this expense?")) return;
         try {
@@ -92,9 +109,16 @@ export default function GroupPage() {
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                     {group.isClosed ? (
-                        <Link href={`/group/${id}/settlement`} className="btn btn-secondary" style={{ background: "var(--secondary)", color: "white", border: "none" }}>
-                            View Settlement Report
-                        </Link>
+                        <>
+                            <Link href={`/group/${id}/settlement`} className="btn btn-secondary" style={{ background: "var(--secondary)", color: "white", border: "none" }}>
+                                View Settlement Report
+                            </Link>
+                            {isAdmin && (
+                                <button onClick={reopenGroup} className="btn btn-primary" style={{ border: "none" }}>
+                                    Reopen Group
+                                </button>
+                            )}
+                        </>
                     ) : (
                         <>
                             <Link href={`/group/${id}/expenses/new`} className="btn btn-primary">

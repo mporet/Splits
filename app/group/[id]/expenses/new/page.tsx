@@ -2,8 +2,11 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ExpenseGroup, GroupParticipant } from "@prisma/client";
+import { formatCurrencyDisplayName } from "@/lib/currencyFormat";
 
 type Participant = { id: string; name: string };
+type GroupData = ExpenseGroup & { id: string; name: string; defaultExpenseCurrency: string; finalCurrency: string };
 
 export default function AddExpensePage() {
     const params = useParams();
@@ -14,6 +17,7 @@ export default function AddExpensePage() {
     const [description, setDescription] = useState("");
     const [amountInput, setAmountInput] = useState("");
     const [currency, setCurrency] = useState("USD");
+    const [availableCurrencies, setAvailableCurrencies] = useState<string[]>([]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -34,6 +38,7 @@ export default function AddExpensePage() {
             .then(data => {
                 if (data.group && !data.group.isClosed) {
                     setParticipants(data.group.participants);
+                    setCurrency(data.group.defaultExpenseCurrency || data.group.finalCurrency || "USD");
 
                     // Default selection: Everyone is selected for both paying and splitting initially
                     // Wait, defaulting 1st person as paying makes more sense, and everyone splitting.
@@ -49,6 +54,19 @@ export default function AddExpensePage() {
                 } else {
                     router.push(`/group/${id}`);
                 }
+            });
+
+        // Fetch currencies
+        fetch("https://open.er-api.com/v6/latest/USD")
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.rates) {
+                    setAvailableCurrencies(Object.keys(data.rates).sort());
+                }
+            })
+            .catch((e) => {
+                console.error("Failed to fetch currencies", e);
+                setAvailableCurrencies(["USD", "EUR", "GBP", "CAD", "AUD", "JPY"]);
             });
     }, [id, router]);
 
@@ -188,13 +206,10 @@ export default function AddExpensePage() {
                         <label className="input-label">Total Amount</label>
                         <input type="number" step="0.01" min="0" className="input-field" required placeholder="0.00" value={amountInput} onChange={e => setAmountInput(e.target.value)} />
                     </div>
-                    <div style={{ width: "120px" }}>
+                    <div style={{ width: "100%" }}>
                         <label className="input-label">Currency</label>
                         <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            {/* Add more as needed */}
+                            {availableCurrencies.map(c => <option key={c} value={c}>{formatCurrencyDisplayName(c)}</option>)}
                         </select>
                     </div>
                 </div>
