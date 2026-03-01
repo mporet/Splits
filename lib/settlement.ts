@@ -12,9 +12,9 @@ export function simplifyDebts(balances: Record<string, number>): Transaction[] {
     const creditors: { id: string; amount: number }[] = [];
 
     for (const [id, balance] of Object.entries(balances)) {
-        if (balance < -1) { // negative threshold due to tiny rounding variations
+        if (balance < 0) {
             debtors.push({ id, amount: Math.abs(balance) });
-        } else if (balance > 1) {
+        } else if (balance > 0) {
             creditors.push({ id, amount: balance });
         }
     }
@@ -34,23 +34,23 @@ export function simplifyDebts(balances: Record<string, number>): Transaction[] {
 
         const settledAmount = Math.min(debtor.amount, creditor.amount);
 
-        // Only record transactions rounded to the nearest cent (1 unit)
-        if (Math.round(settledAmount) > 0) {
+        // Only record transactions of at least 1 cent
+        if (settledAmount > 0) {
             transactions.push({
                 from: debtor.id,
                 to: creditor.id,
-                amount: Math.round(settledAmount)
+                amount: settledAmount
             });
         }
 
         debtor.amount -= settledAmount;
         creditor.amount -= settledAmount;
 
-        // Move pointers if settled within a 1-cent boundary
-        if (debtor.amount < 1) {
+        // Move pointers if settled exactly
+        if (debtor.amount === 0) {
             i++;
         }
-        if (creditor.amount < 1) {
+        if (creditor.amount === 0) {
             j++;
         }
     }

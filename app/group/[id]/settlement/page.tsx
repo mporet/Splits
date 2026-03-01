@@ -35,13 +35,36 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
     group.participants.forEach((p: any) => { balances[p.id] = 0; });
 
     for (const expense of group.expenses) {
-        // Determine the amount to add/subtract in the final currency
-        for (const payer of expense.payers) {
-            const convertedPaid = await convertCurrency(payer.amountPaid, expense.currency, baseCurrency);
+        // Determine the total converted amount to guarantee exact zero-sum ledger
+        const convertedTotal = await convertCurrency(expense.amount, expense.currency, baseCurrency);
+
+        // Distribute converted amount proportionally among payers
+        let sumConvertedPaid = 0;
+        for (let i = 0; i < expense.payers.length; i++) {
+            const payer = expense.payers[i];
+            let convertedPaid = 0;
+            if (i === expense.payers.length - 1) {
+                convertedPaid = convertedTotal - sumConvertedPaid;
+            } else {
+                const ratio = expense.amount > 0 ? (payer.amountPaid / expense.amount) : 0;
+                convertedPaid = Math.round(convertedTotal * ratio);
+                sumConvertedPaid += convertedPaid;
+            }
             balances[payer.participantId] += convertedPaid; // Payer gets positive balance
         }
-        for (const split of expense.splits) {
-            const convertedSplit = await convertCurrency(split.amountSplit, expense.currency, baseCurrency);
+
+        // Distribute converted amount proportionally among splits
+        let sumConvertedSplit = 0;
+        for (let i = 0; i < expense.splits.length; i++) {
+            const split = expense.splits[i];
+            let convertedSplit = 0;
+            if (i === expense.splits.length - 1) {
+                convertedSplit = convertedTotal - sumConvertedSplit;
+            } else {
+                const ratio = expense.amount > 0 ? (split.amountSplit / expense.amount) : 0;
+                convertedSplit = Math.round(convertedTotal * ratio);
+                sumConvertedSplit += convertedSplit;
+            }
             balances[split.participantId] -= convertedSplit; // Splitter gets negative balance (owes)
         }
     }
