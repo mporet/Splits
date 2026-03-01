@@ -72,9 +72,10 @@ model ExpenseGroup {
 }
 
 model GroupParticipant {
-  id        String   @id @default(cuid())
-  groupId   String
-  name      String
+  id            String   @id @default(cuid())
+  groupId       String
+  name          String
+  venmoUsername String?
 
   group     ExpenseGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   payments  ExpensePayer[]

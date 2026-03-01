@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { convertCurrency } from "@/lib/exchangeRates";
-import { simplifyDebts, Transaction } from "@/lib/settlement";
+import { simplifyDebts } from "@/lib/settlement";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -32,7 +32,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
 
     // Calculate net balances
     const balances: Record<string, number> = {};
-    group.participants.forEach(p => { balances[p.id] = 0; });
+    group.participants.forEach((p: any) => { balances[p.id] = 0; });
 
     for (const expense of group.expenses) {
         // Determine the amount to add/subtract in the final currency
@@ -50,18 +50,14 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
     const transactions = simplifyDebts(balances);
 
     const getParticipantName = (participantId: string) => {
-        return group.participants.find(p => p.id === participantId)?.name || "Unknown";
+        return group.participants.find((p: any) => p.id === participantId)?.name || "Unknown";
     };
 
-    const generatePaymentLink = (fromName: string, toName: string, amount: number) => {
-        const amountFloat = (amount / 100).toFixed(2);
-        const note = `Expense Split for ${group.name}`;
-        // Simple deep links (Venmo / PayPal / CashApp)
-        // Here we just provide standard app links
-        return `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(toName)}&amount=${amountFloat}&note=${encodeURIComponent(note)}`;
+    const getVenmoUsername = (participantId: string) => {
+        return group.participants.find((p: any) => p.id === participantId)?.venmoUsername || null;
     };
 
-    const totalExpenses = group.expenses.reduce((sum, e) => sum + e.amount, 0); // note this sum is mixed currency slightly inaccurate to display but okay for debug
+    const totalExpenses = group.expenses.reduce((sum: any, e: any) => sum + e.amount, 0); // note this sum is mixed currency slightly inaccurate to display but okay for debug
 
     return (
         <div className="container">
@@ -88,6 +84,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
                         {transactions.map((t, idx) => {
                             const fromName = getParticipantName(t.from);
                             const toName = getParticipantName(t.to);
+                            const toVenmo = getVenmoUsername(t.to);
                             const amountDisplay = (t.amount / 100).toFixed(2);
 
                             return (
@@ -103,15 +100,11 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
 
                                     <div className="flex gap-2">
                                         {/* Payment Deep Links */}
-                                        <a href={generatePaymentLink(fromName, toName, t.amount)} className="btn" style={{ background: "#008CFF", color: "white", flex: 1, fontSize: "0.85rem", padding: "0.5rem" }} target="_blank" rel="noreferrer">
-                                            Pay with Venmo
-                                        </a>
-                                        <a href={`https://paypal.me/${encodeURIComponent(toName)}/${amountDisplay}${baseCurrency}`} className="btn" style={{ background: "#003087", color: "white", flex: 1, fontSize: "0.85rem", padding: "0.5rem" }} target="_blank" rel="noreferrer">
-                                            Pay with PayPal
-                                        </a>
-                                        <a href={`https://cash.app/$${encodeURIComponent(toName)}/${amountDisplay}`} className="btn" style={{ background: "#00D632", color: "white", flex: 1, fontSize: "0.85rem", padding: "0.5rem" }} target="_blank" rel="noreferrer">
-                                            Pay with CashApp
-                                        </a>
+                                        {toVenmo && (
+                                            <a href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(toVenmo)}&amount=${amountDisplay}&note=${encodeURIComponent(`Expense Split for ${group.name}`)}`} className="btn" style={{ background: "#008CFF", color: "white", flex: 1, fontSize: "0.85rem", padding: "0.5rem" }} target="_blank" rel="noreferrer">
+                                                Pay with Venmo
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
                             );

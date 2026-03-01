@@ -88,13 +88,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 // Update existing
                 await prisma.groupParticipant.update({
                     where: { id: p.id },
-                    data: { name: p.name }
+                    data: { name: p.name, venmoUsername: p.venmoUsername || null }
                 });
             } else if (!p.id && !p._deleted) {
                 // Create new
                 await prisma.groupParticipant.create({
                     data: {
                         name: p.name,
+                        venmoUsername: p.venmoUsername || null,
                         groupId
                     }
                 });

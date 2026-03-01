@@ -8,6 +8,7 @@ import { formatCurrencyDisplayName } from "@/lib/currencyFormat";
 type ParticipantState = {
     id?: string;
     name: string;
+    venmoUsername?: string | null;
     _deleted?: boolean;
 };
 
@@ -52,6 +53,7 @@ export default function EditGroupPage() {
                         setParticipants(data.group.participants.map((p: any) => ({
                             id: p.id,
                             name: p.name,
+                            venmoUsername: p.venmoUsername,
                             _deleted: false
                         })));
                     }
@@ -73,7 +75,7 @@ export default function EditGroupPage() {
     }, [id, status, router]);
 
     const handleAddParticipant = () => {
-        setParticipants([...participants, { name: "", _deleted: false }]);
+        setParticipants([...participants, { name: "", venmoUsername: "", _deleted: false }]);
     };
 
     const handleRemoveParticipant = (index: number) => {
@@ -212,6 +214,18 @@ export default function EditGroupPage() {
                                     onChange={(e) => handleParticipantNameChange(p.originalIndex, e.target.value)}
                                     placeholder="Enter name"
                                     required
+                                />
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    style={{ flex: 1 }}
+                                    value={p.venmoUsername || ""}
+                                    onChange={(e) => {
+                                        const newParticipants = [...participants];
+                                        newParticipants[p.originalIndex].venmoUsername = e.target.value;
+                                        setParticipants(newParticipants);
+                                    }}
+                                    placeholder="Venmo Username (optional)"
                                 />
                                 <button type="button" onClick={() => handleRemoveParticipant(p.originalIndex)} className="btn btn-danger" style={{ padding: "0.5rem 0.8rem" }}>
                                     X
