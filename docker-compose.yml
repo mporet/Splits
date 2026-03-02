@@ -14,7 +14,7 @@ services:
       - NODE_ENV=production
       # Update these paths to use the persistent volume
       - DATABASE_URL=file:/app/data/prod.db
-      - NEXTAUTH_URL=http://localhost # Change this to your server IP or domain without a port
+      - NEXTAUTH_URL=http://split.mikeporet.com # Custom domain for OAuth redirects
       # Make sure to replace this secret!
       - NEXTAUTH_SECRET=/Rzt/9vE4Cj787iJ0YBNy/6J9z/e4HHZ23qPaJTnTX0=
     volumes:
