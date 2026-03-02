@@ -9,12 +9,12 @@ services:
     container_name: splits-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       - NODE_ENV=production
       # Update these paths to use the persistent volume
       - DATABASE_URL=file:/app/data/prod.db
-      - NEXTAUTH_URL=http://localhost:3000 # Change this to your server IP or domain
+      - NEXTAUTH_URL=http://localhost # Change this to your server IP or domain without a port
       # Make sure to replace this secret!
       - NEXTAUTH_SECRET=/Rzt/9vE4Cj787iJ0YBNy/6J9z/e4HHZ23qPaJTnTX0=
     volumes:
