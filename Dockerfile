@@ -54,13 +54,15 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Set HOME to /tmp so npm has a writable directory (avoids /nonexistent permissions errors)
+# Set HOME and npm cache to /tmp so npm has a writable directory (avoids /nonexistent permissions errors)
 ENV HOME=/tmp
+ENV npm_config_cache=/tmp/.npm
 
 # Pre-create the data directory and ensure proper ownership so Prisma can write to the SQLite file
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
-# Copy Prisma schema and migrations to run `prisma db push` on startup
+# Copy Prisma config, schema, and migrations to run `prisma db push` on startup
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy the required start script
 COPY --chown=nextjs:nodejs start.sh ./start.sh
