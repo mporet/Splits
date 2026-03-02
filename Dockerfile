@@ -2,8 +2,8 @@ FROM node:20-bookworm-slim AS base
 
 # Install OpenSSL and sqlite3 dependencies necessary for Prisma Client and better-sqlite3
 RUN apt-get update -y && \
-    apt-get install -y openssl sqlite3 libsqlite3-dev ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y openssl sqlite3 libsqlite3-dev ca-certificates && \
+  rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -24,6 +24,9 @@ COPY . .
 
 # Generate Prisma Client
 RUN npx prisma generate
+
+# Ensure public directory exists before copying in runner phase
+RUN mkdir -p /app/public
 
 # Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
