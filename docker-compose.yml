@@ -10,13 +10,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:3000"
-    environment:
-      - NODE_ENV=production
-      # Update these paths to use the persistent volume
-      - DATABASE_URL=file:/app/data/prod.db
-      - NEXTAUTH_URL=https://split.mikeporet.com # Use HTTPS to match external access
-      # Make sure to replace this secret!
-      - NEXTAUTH_SECRET=/Rzt/9vE4Cj787iJ0YBNy/6J9z/e4HHZ23qPaJTnTX0=
+    env_file:
+      - .env
     volumes:
       # Mount the host directory to /app/data inside the container
       - splits-data:/app/data
