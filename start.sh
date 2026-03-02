@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# Ensure the data directory exists
-mkdir -p /app/data || echo "Warning: Failed to create /app/data"
+# The /app/data directory is mapped via Docker volumes.
 
 # Run Prisma db push to create/update the database schema
 echo "Running Prisma db push..."
