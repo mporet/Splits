@@ -61,12 +61,12 @@ ENV npm_config_cache=/tmp/.npm
 # Pre-create the data directory and ensure proper ownership so Prisma can write to the SQLite file
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
-# Copy Prisma config, schema, and migrations to run `prisma db push` on startup
+# Copy Prisma config and schema to run `prisma db push` on startup
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-# Copy only the node_modules packages needed by prisma CLI and prisma.config.ts at startup
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Copy full node_modules — Prisma CLI has too many transitive deps (valibot, WASM files, etc.)
+# to cherry-pick reliably. Full copy is the only robust approach.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 # Copy the required start script
 COPY --chown=nextjs:nodejs start.sh ./start.sh
