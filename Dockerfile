@@ -67,6 +67,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy only the node_modules packages needed by prisma CLI and prisma.config.ts at startup
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 # Copy the required start script
 COPY --chown=nextjs:nodejs start.sh ./start.sh
