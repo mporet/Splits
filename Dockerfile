@@ -62,7 +62,6 @@ ENV npm_config_cache=/tmp/.npm
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
 # Copy Prisma config, schema, and migrations to run `prisma db push` on startup
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy the required start script
 COPY --chown=nextjs:nodejs start.sh ./start.sh
