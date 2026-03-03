@@ -49,7 +49,8 @@ export default function AddExpensePage() {
                     setSelectedSplits(initialSplits);
 
                     if (data.group.participants.length > 0) {
-                        setSelectedPayers({ [data.group.participants[0].id]: true });
+                        // Default to nobody selected so the user is forced to tap
+                        setSelectedPayers({});
                     }
                 } else {
                     router.push(`/group/${id}`);
@@ -225,21 +226,34 @@ export default function AddExpensePage() {
                             <option value="EXACT">Exact Amounts</option>
                         </select>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                        {participants.map(p => (
-                            <div key={p.id} className="flex items-center gap-2" style={{ background: "rgba(255,255,255,0.05)", padding: "0.5rem 1rem", borderRadius: "8px" }}>
-                                <input
-                                    type="checkbox"
-                                    checked={!!selectedPayers[p.id]}
-                                    onChange={() => toggleSelection(p.id, selectedPayers, setSelectedPayers)}
-                                    style={{ width: "1.2rem", height: "1.2rem" }}
-                                />
-                                <span style={{ minWidth: "120px" }}>{p.name}</span>
-                                {payerMode === "EXACT" && selectedPayers[p.id] && (
-                                    <input type="number" step="0.01" min="0" className="input-field" style={{ padding: "0.3rem", fontSize: "0.9rem" }} placeholder="0.00" value={exactPayments[p.id] || ""} onChange={e => setExactPayments({ ...exactPayments, [p.id]: e.target.value })} />
-                                )}
-                            </div>
-                        ))}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                        {participants.map(p => {
+                            const isSelected = !!selectedPayers[p.id];
+                            return (
+                                <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flexGrow: payerMode === "EXACT" && isSelected ? 1 : 0 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSelection(p.id, selectedPayers, setSelectedPayers)}
+                                        style={{
+                                            padding: "0.6rem 1rem",
+                                            borderRadius: "20px",
+                                            border: `1px solid ${isSelected ? "var(--primary)" : "var(--card-border)"}`,
+                                            background: isSelected ? "var(--primary)" : "rgba(255,255,255,0.05)",
+                                            color: isSelected ? "white" : "var(--foreground)",
+                                            cursor: "pointer",
+                                            fontWeight: isSelected ? "bold" : "normal",
+                                            transition: "all 0.2s",
+                                            whiteSpace: "nowrap"
+                                        }}
+                                    >
+                                        {p.name}
+                                    </button>
+                                    {payerMode === "EXACT" && isSelected && (
+                                        <input type="number" step="0.01" min="0" className="input-field" style={{ padding: "0.4rem", fontSize: "0.9rem", textAlign: "center", borderRadius: "8px" }} placeholder="0.00" value={exactPayments[p.id] || ""} onChange={e => setExactPayments({ ...exactPayments, [p.id]: e.target.value })} />
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -255,24 +269,51 @@ export default function AddExpensePage() {
                             <option value="PERCENTAGE">Percentages</option>
                         </select>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                        {participants.map(p => (
-                            <div key={p.id} className="flex items-center gap-2" style={{ background: "rgba(255,255,255,0.05)", padding: "0.5rem 1rem", borderRadius: "8px" }}>
-                                <input
-                                    type="checkbox"
-                                    checked={!!selectedSplits[p.id]}
-                                    onChange={() => toggleSelection(p.id, selectedSplits, setSelectedSplits)}
-                                    style={{ width: "1.2rem", height: "1.2rem" }}
-                                />
-                                <span style={{ minWidth: "120px" }}>{p.name}</span>
-                                {splitMode === "EXACT" && selectedSplits[p.id] && (
-                                    <input type="number" step="0.01" min="0" className="input-field" style={{ padding: "0.3rem", fontSize: "0.9rem" }} placeholder="0.00" value={exactSplits[p.id] || ""} onChange={e => setExactSplits({ ...exactSplits, [p.id]: e.target.value })} />
-                                )}
-                                {splitMode === "PERCENTAGE" && selectedSplits[p.id] && (
-                                    <input type="number" step="0.01" min="0" max="100" className="input-field" style={{ padding: "0.3rem", fontSize: "0.9rem" }} placeholder="%" value={percentageSplits[p.id] || ""} onChange={e => setPercentageSplits({ ...percentageSplits, [p.id]: e.target.value })} />
-                                )}
-                            </div>
-                        ))}
+
+                    <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+                        <button type="button" onClick={() => {
+                            const allSplits: Record<string, boolean> = {};
+                            participants.forEach(p => allSplits[p.id] = true);
+                            setSelectedSplits(allSplits);
+                        }} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}>
+                            Select All
+                        </button>
+                        <button type="button" onClick={() => setSelectedSplits({})} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}>
+                            Select None
+                        </button>
+                    </div>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                        {participants.map(p => {
+                            const isSelected = !!selectedSplits[p.id];
+                            return (
+                                <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flexGrow: (splitMode === "EXACT" || splitMode === "PERCENTAGE") && isSelected ? 1 : 0 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSelection(p.id, selectedSplits, setSelectedSplits)}
+                                        style={{
+                                            padding: "0.6rem 1rem",
+                                            borderRadius: "20px",
+                                            border: `1px solid ${isSelected ? "var(--primary)" : "var(--card-border)"}`,
+                                            background: isSelected ? "var(--primary)" : "rgba(255,255,255,0.05)",
+                                            color: isSelected ? "white" : "var(--foreground)",
+                                            cursor: "pointer",
+                                            fontWeight: isSelected ? "bold" : "normal",
+                                            transition: "all 0.2s",
+                                            whiteSpace: "nowrap"
+                                        }}
+                                    >
+                                        {p.name}
+                                    </button>
+                                    {splitMode === "EXACT" && isSelected && (
+                                        <input type="number" step="0.01" min="0" className="input-field" style={{ padding: "0.4rem", fontSize: "0.9rem", textAlign: "center", borderRadius: "8px" }} placeholder="0.00" value={exactSplits[p.id] || ""} onChange={e => setExactSplits({ ...exactSplits, [p.id]: e.target.value })} />
+                                    )}
+                                    {splitMode === "PERCENTAGE" && isSelected && (
+                                        <input type="number" step="0.01" min="0" max="100" className="input-field" style={{ padding: "0.4rem", fontSize: "0.9rem", textAlign: "center", borderRadius: "8px" }} placeholder="%" value={percentageSplits[p.id] || ""} onChange={e => setPercentageSplits({ ...percentageSplits, [p.id]: e.target.value })} />
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 

@@ -156,6 +156,9 @@ export default function GroupPage() {
                 <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <h1 className="title">{group.name}</h1>
+                    </div>
+                    <p className="subtitle mb-2">Group Details & Expenses</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
                         {isAdmin && (
                             <Link href={`/group/${id}/edit`} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", height: "fit-content" }}>
                                 ⚙️ Edit
@@ -172,47 +175,24 @@ export default function GroupPage() {
                         >
                             🔗 Share Group
                         </button>
+                        {group.isClosed ? (
+                            <>
+                                {isAdmin && (
+                                    <button onClick={reopenGroup} className="btn btn-primary" style={{ border: "none", padding: "0.3rem 0.6rem", fontSize: "0.8rem", height: "fit-content" }}>
+                                        Reopen Group
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {isAdmin && (
+                                    <button onClick={closeGroup} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", height: "fit-content" }}>
+                                        Close & Settle Up
+                                    </button>
+                                )}
+                            </>
+                        )}
                     </div>
-                    <p className="subtitle">Group Details & Expenses</p>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-                    {/* Quick Switch Dropdown */}
-                    <div style={{ position: "relative" }}>
-                        <select
-                            className="input-field"
-                            style={{ padding: "0.5rem", height: "auto", cursor: "pointer", background: "var(--card-bg)" }}
-                            onChange={(e) => {
-                                if (e.target.value) {
-                                    router.push(`/group/${e.target.value}`);
-                                }
-                            }}
-                            value=""
-                        >
-                            <option value="" disabled>Switch Group...</option>
-                            {savedGroups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                            <option value="/">View All Saved Groups</option>
-                        </select>
-                    </div>
-
-                    {group.isClosed ? (
-                        <>
-                            {isAdmin && (
-                                <button onClick={reopenGroup} className="btn btn-primary" style={{ border: "none" }}>
-                                    Reopen Group
-                                </button>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            {isAdmin && (
-                                <button onClick={closeGroup} className="btn btn-danger">
-                                    Close & Settle Up
-                                </button>
-                            )}
-                        </>
-                    )}
                 </div>
             </div>
 
@@ -415,44 +395,36 @@ export default function GroupPage() {
                                             {netBalance > 0 ? `Lent ${baseCurrency} ${(netBalance / 100).toFixed(2)}` : netBalance < 0 ? `Owes ${baseCurrency} ${(Math.abs(netBalance) / 100).toFixed(2)}` : "Settled (0.00)"}
                                         </span>
                                     </summary>
-                                    <div style={{ padding: "0 1rem 1rem 1rem", fontSize: "0.9rem", overflowX: "auto" }}>
-                                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "300px" }}>
-                                            <thead>
-                                                <tr style={{ borderBottom: "1px solid var(--card-border)", textAlign: "left", color: "var(--text-muted)" }}>
-                                                    <th style={{ padding: "0.5rem 0" }}>Expense</th>
-                                                    <th style={{ padding: "0.5rem 0", textAlign: "right" }}>Paid</th>
-                                                    <th style={{ padding: "0.5rem 0", textAlign: "right" }}>Share</th>
-                                                    <th style={{ padding: "0.5rem 0", textAlign: "right" }}>Net</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {ledger.map((entry: any) => (
-                                                    <tr key={entry.expenseId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                                                        <td style={{ padding: "0.5rem 0" }}>
-                                                            <div>{entry.description}</div>
-                                                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{entry.originalCurrency} ${(entry.originalAmount / 100).toFixed(2)}</div>
-                                                        </td>
-                                                        <td style={{ padding: "0.5rem 0", textAlign: "right", color: entry.paidConvert > 0 ? "var(--secondary)" : "inherit" }}>
-                                                            {entry.paidConvert > 0 ? `${baseCurrency} ${(entry.paidConvert / 100).toFixed(2)}` : "-"}
-                                                        </td>
-                                                        <td style={{ padding: "0.5rem 0", textAlign: "right", color: entry.owedConvert > 0 ? "var(--destructive)" : "inherit" }}>
-                                                            {entry.owedConvert > 0 ? `${baseCurrency} ${(entry.owedConvert / 100).toFixed(2)}` : "-"}
-                                                        </td>
-                                                        <td style={{ padding: "0.5rem 0", textAlign: "right", fontWeight: "bold", color: entry.netConvert > 0 ? "var(--secondary)" : entry.netConvert < 0 ? "var(--destructive)" : "inherit" }}>
-                                                            {entry.netConvert > 0 ? "+" : ""}{(entry.netConvert / 100).toFixed(2)}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot>
-                                                <tr style={{ fontWeight: "bold" }}>
-                                                    <td style={{ padding: "0.75rem 0" }}>Total Net</td>
-                                                    <td colSpan={3} style={{ padding: "0.75rem 0", textAlign: "right", color: netBalance > 0 ? "var(--secondary)" : netBalance < 0 ? "var(--destructive)" : "inherit" }}>
-                                                        {baseCurrency} {(netBalance / 100).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
+                                    <div style={{ padding: "0 1rem 1rem 1rem", fontSize: "0.9rem" }}>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                            {ledger.map((entry: any) => (
+                                                <div key={entry.expenseId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.25rem" }}>
+                                                        <div>
+                                                            <div style={{ fontWeight: "bold" }}>{entry.description}</div>
+                                                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{entry.originalCurrency} ${(entry.originalAmount / 100).toFixed(2)}</div>
+                                                        </div>
+                                                        <div style={{ textAlign: "right", fontWeight: "bold", color: entry.netConvert > 0 ? "var(--secondary)" : entry.netConvert < 0 ? "var(--destructive)" : "inherit" }}>
+                                                            {entry.netConvert > 0 ? "+" : ""}{(entry.netConvert / 100).toFixed(2)} {baseCurrency}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                                                        <div style={{ color: entry.paidConvert > 0 ? "var(--secondary)" : "inherit" }}>
+                                                            Paid: {entry.paidConvert > 0 ? `${baseCurrency} ${(entry.paidConvert / 100).toFixed(2)}` : "-"}
+                                                        </div>
+                                                        <div style={{ color: entry.owedConvert > 0 ? "var(--destructive)" : "inherit" }}>
+                                                            Share: {entry.owedConvert > 0 ? `${baseCurrency} ${(entry.owedConvert / 100).toFixed(2)}` : "-"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", paddingTop: "0.5rem", borderTop: "1px solid var(--card-border)" }}>
+                                                <div>Total Net</div>
+                                                <div style={{ color: netBalance > 0 ? "var(--secondary)" : netBalance < 0 ? "var(--destructive)" : "inherit" }}>
+                                                    {baseCurrency} {(netBalance / 100).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </details>
                             );
