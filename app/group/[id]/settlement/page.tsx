@@ -1,76 +1,66 @@
-import { prisma } from "@/lib/db";
-import { convertCurrency } from "@/lib/exchangeRates";
-import { simplifyDebts } from "@/lib/settlement";
+"use client";
+
+import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { simplifyDebts, Transaction } from "@/lib/settlement";
 
-export default async function SettlementPage({ params }: { params: Promise<{ id: string }> }) {
-    const resolvedParams = await params;
+export default function SettlementPage({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = use(params);
     const id = resolvedParams.id;
 
-    const group = await prisma.expenseGroup.findUnique({
-        where: { id },
-        include: {
-            participants: true,
-            expenses: {
-                include: { payers: true, splits: true }
+    const [group, setGroup] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [rates, setRates] = useState<Record<string, number>>({});
+    const [totalSpendByCurrency, setTotalSpendByCurrency] = useState<Record<string, number>>({});
+    const [grandTotalSpendBase, setGrandTotalSpendBase] = useState(0);
+    const [perPersonLedger, setPerPersonLedger] = useState<Record<string, any>>({});
+    const [balances, setBalances] = useState<Record<string, number>>({});
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    // UI State
+    const [activeTab, setActiveTab] = useState<"summary" | "debts" | "ledgers">("summary");
+
+    useEffect(() => {
+        async function loadData() {
+            try {
+                // Fetch group data via API
+                const res = await fetch(`/api/groups/${id}/settlement`);
+                if (!res.ok) {
+                    if (res.status === 404) return notFound();
+                    throw new Error("Failed to load group");
+                }
+                const data = await res.json();
+
+                setGroup(data.group);
+                setRates(data.rates);
+                setTotalSpendByCurrency(data.totalSpendByCurrency);
+                setGrandTotalSpendBase(data.grandTotalSpendBase);
+                setPerPersonLedger(data.perPersonLedger);
+                setBalances(data.balances);
+                setTransactions(data.transactions);
+
+                // If group is open, default to summary tab because debts won't be available
+                if (!data.group.isClosed) {
+                    setActiveTab("summary");
+                } else {
+                    setActiveTab("debts"); // default to debts if closed
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
             }
         }
-    });
+        loadData();
+    }, [id]);
+
+    if (loading) {
+        return <div className="container mt-8 text-center"><div className="loader mx-auto" style={{ width: "3rem", height: "3rem", border: "3px solid rgba(255,255,255,0.1)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div></div>;
+    }
 
     if (!group) return notFound();
-    if (!group.isClosed) {
-        return (
-            <div className="container mt-4 text-center">
-                <h2 className="title mb-4">Group is not closed yet</h2>
-                <Link href={`/group/${id}`} className="btn btn-primary">Go back to group</Link>
-            </div>
-        );
-    }
-
     const baseCurrency = group.finalCurrency || "USD";
-
-    // Calculate net balances
-    const balances: Record<string, number> = {};
-    group.participants.forEach((p: any) => { balances[p.id] = 0; });
-
-    for (const expense of group.expenses) {
-        // Determine the total converted amount to guarantee exact zero-sum ledger
-        const convertedTotal = await convertCurrency(expense.amount, expense.currency, baseCurrency);
-
-        // Distribute converted amount proportionally among payers
-        let sumConvertedPaid = 0;
-        for (let i = 0; i < expense.payers.length; i++) {
-            const payer = expense.payers[i];
-            let convertedPaid = 0;
-            if (i === expense.payers.length - 1) {
-                convertedPaid = convertedTotal - sumConvertedPaid;
-            } else {
-                const ratio = expense.amount > 0 ? (payer.amountPaid / expense.amount) : 0;
-                convertedPaid = Math.round(convertedTotal * ratio);
-                sumConvertedPaid += convertedPaid;
-            }
-            balances[payer.participantId] += convertedPaid; // Payer gets positive balance
-        }
-
-        // Distribute converted amount proportionally among splits
-        let sumConvertedSplit = 0;
-        for (let i = 0; i < expense.splits.length; i++) {
-            const split = expense.splits[i];
-            let convertedSplit = 0;
-            if (i === expense.splits.length - 1) {
-                convertedSplit = convertedTotal - sumConvertedSplit;
-            } else {
-                const ratio = expense.amount > 0 ? (split.amountSplit / expense.amount) : 0;
-                convertedSplit = Math.round(convertedTotal * ratio);
-                sumConvertedSplit += convertedSplit;
-            }
-            balances[split.participantId] -= convertedSplit; // Splitter gets negative balance (owes)
-        }
-    }
-
-    // Generate perfect simplified transactions
-    const transactions = simplifyDebts(balances);
 
     const getParticipantName = (participantId: string) => {
         return group.participants.find((p: any) => p.id === participantId)?.name || "Unknown";
@@ -80,102 +70,238 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
         return group.participants.find((p: any) => p.id === participantId)?.venmoUsername || null;
     };
 
-    const totalExpenses = group.expenses.reduce((sum: any, e: any) => sum + e.amount, 0); // note this sum is mixed currency slightly inaccurate to display but okay for debug
-
     return (
-        <div className="container">
+        <div className="container" style={{ paddingBottom: "4rem" }}>
             <div className="header mb-4">
                 <div>
                     <h1 className="title">Settlement Report</h1>
-                    <p className="subtitle">{group.name} - Final Debts ({baseCurrency})</p>
+                    <p className="subtitle">{group.name} - {group.isClosed ? `Final Debts (${baseCurrency})` : `Current Spend Review (${baseCurrency})`}</p>
                 </div>
                 <Link href={`/group/${id}`} className="btn btn-secondary">Back to Group</Link>
             </div>
 
-            <div className="glass-card mb-4" style={{ textAlign: "center", border: "1px solid var(--secondary)", background: "rgba(16, 185, 129, 0.1)" }}>
-                <h3 style={{ color: "var(--secondary)", marginBottom: "0.5rem" }}>All Settled Up!</h3>
-                <p className="text-muted text-sm pb-2">Debts have been simplified to the minimum number of transactions.</p>
+            {!group.isClosed && (
+                <div className="glass-card mb-4" style={{ textAlign: "center", border: "1px solid var(--destructive)", background: "rgba(239, 68, 68, 0.1)" }}>
+                    <h3 style={{ color: "var(--destructive)", marginBottom: "0.5rem" }}>⚠️ Group is still open</h3>
+                    <p className="text-muted text-sm pb-2">Simplified payment plans will be generated once an admin closes the group. You can still review totals and individual ledgers below.</p>
+                </div>
+            )}
+
+            {group.isClosed && (
+                <div className="glass-card mb-4" style={{ textAlign: "center", border: "1px solid var(--secondary)", background: "rgba(16, 185, 129, 0.1)" }}>
+                    <h3 style={{ color: "var(--secondary)", marginBottom: "0.5rem" }}>All Settled Up!</h3>
+                    <p className="text-muted text-sm pb-2">Debts have been simplified to the minimum number of transactions.</p>
+                </div>
+            )}
+
+            {/* Navigation Tabs */}
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", borderBottom: "1px solid var(--card-border)", overflowX: "auto" }}>
+                {group.isClosed && (
+                    <button
+                        onClick={() => setActiveTab("debts")}
+                        style={{
+                            background: activeTab === "debts" ? "rgba(255,255,255,0.1)" : "transparent",
+                            color: activeTab === "debts" ? "var(--primary)" : "var(--text-muted)",
+                            border: "none", borderBottom: activeTab === "debts" ? "2px solid var(--primary)" : "2px solid transparent",
+                            padding: "0.75rem 1.5rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s"
+                        }}
+                    >
+                        Who Owes Whom
+                    </button>
+                )}
+                <button
+                    onClick={() => setActiveTab("summary")}
+                    style={{
+                        background: activeTab === "summary" ? "rgba(255,255,255,0.1)" : "transparent",
+                        color: activeTab === "summary" ? "var(--primary)" : "var(--text-muted)",
+                        border: "none", borderBottom: activeTab === "summary" ? "2px solid var(--primary)" : "2px solid transparent",
+                        padding: "0.75rem 1.5rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s"
+                    }}
+                >
+                    Total Group Spend
+                </button>
+                <button
+                    onClick={() => setActiveTab("ledgers")}
+                    style={{
+                        background: activeTab === "ledgers" ? "rgba(255,255,255,0.1)" : "transparent",
+                        color: activeTab === "ledgers" ? "var(--primary)" : "var(--text-muted)",
+                        border: "none", borderBottom: activeTab === "ledgers" ? "2px solid var(--primary)" : "2px solid transparent",
+                        padding: "0.75rem 1.5rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s"
+                    }}
+                >
+                    Individual Ledgers
+                </button>
             </div>
 
-            {/* Exchange Rates Display */}
-            {(() => {
-                const uniqueCurrencies = Array.from(new Set(group.expenses.map((e: any) => e.currency))).filter(c => c !== baseCurrency);
-                if (uniqueCurrencies.length > 0) {
-                    return (
-                        <div className="glass-card mb-4" style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--primary)", textAlign: "center" }}>
-                            <h4 style={{ color: "var(--foreground)", marginBottom: "0.5rem", fontSize: "1rem" }}>💱 Currency Conversions</h4>
-                            <p className="text-muted text-sm" style={{ marginBottom: "0.5rem" }}>
-                                Expenses not in {baseCurrency} were converted using today's exchange rates.
-                            </p>
-                            <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap", fontSize: "0.9rem" }}>
-                                {uniqueCurrencies.map((currency) => (
-                                    <span key={currency as string} style={{ background: "rgba(255,255,255,0.1)", padding: "0.2rem 0.6rem", borderRadius: "4px" }}>
-                                        {/* To render async data inline, we either need a sub-component or calculate upfront. For now, just indicating it was converted correctly. */}
-                                        {currency as string} → {baseCurrency} conversions applied
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                }
-                return null;
-            })()}
+            {/* Tab Contents */}
 
-            <div className="glass-card">
-                <h3 style={{ marginBottom: "1.5rem", borderBottom: "1px solid var(--card-border)", paddingBottom: "0.5rem" }}>Who owes whom?</h3>
+            {activeTab === "summary" && (
+                <div className="glass-card mb-4" style={{ display: "flex", flexDirection: "column", gap: "1rem", animation: "fadeIn 0.3s ease" }}>
+                    <h3 style={{ margin: 0, borderBottom: "1px solid var(--card-border)", paddingBottom: "0.5rem" }}>Total Group Spend</h3>
 
-                {transactions.length === 0 ? (
-                    <p className="text-center text-muted">No one owes anything! Everything is perfectly balanced.</p>
-                ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-                        {Object.entries(
-                            transactions.reduce((acc, t) => {
-                                acc[t.to] = acc[t.to] || [];
-                                acc[t.to].push(t);
-                                return acc;
-                            }, {} as Record<string, typeof transactions>)
-                        ).map(([payeeId, payeeTransactions]) => {
-                            const payeeName = getParticipantName(payeeId);
-                            const toVenmo = getVenmoUsername(payeeId);
-
+                    {(() => {
+                        const uniqueCurrencies = Array.from(new Set(group.expenses.map((e: any) => e.currency))).filter(c => c !== baseCurrency);
+                        if (uniqueCurrencies.length > 0) {
                             return (
-                                <div key={payeeId} style={{ background: "rgba(15, 23, 42, 0.4)", borderRadius: "12px", border: "1px solid var(--card-border)", overflow: "hidden" }}>
-                                    <div style={{ padding: "1rem 1.5rem", background: "rgba(255, 255, 255, 0.05)", borderBottom: "1px solid var(--card-border)" }}>
-                                        <h4 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "bold" }}>
-                                            Payments to <span style={{ color: "var(--primary)" }}>{payeeName}</span>
-                                        </h4>
-                                    </div>
-
-                                    <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                        {payeeTransactions.map((t, idx) => {
-                                            const payerName = getParticipantName(t.from);
-                                            const amountDisplay = (t.amount / 100).toFixed(2);
-
+                                <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--primary)", borderRadius: "8px", padding: "0.75rem", fontSize: "0.9rem" }}>
+                                    <div style={{ color: "var(--foreground)", fontWeight: "bold", marginBottom: "0.25rem" }}>💱 Exchange Rates Applied</div>
+                                    <div style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Expenses were converted to {baseCurrency} using today's rates.</div>
+                                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", fontSize: "0.85rem" }}>
+                                        {uniqueCurrencies.map((currency) => {
+                                            const currCode = currency as string;
+                                            const rate = (rates[baseCurrency] || 1) / (rates[currCode] || 1);
                                             return (
-                                                <div key={idx} className="flex justify-between items-center" style={{ paddingBottom: "1rem", borderBottom: idx < payeeTransactions.length - 1 ? "1px solid var(--card-border)" : "none" }}>
-                                                    <div style={{ fontSize: "1.1rem" }}>
-                                                        <strong>{payerName}</strong> owes
-                                                    </div>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                                        <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--foreground)" }}>
-                                                            {baseCurrency} {amountDisplay}
-                                                        </span>
-                                                        {toVenmo && (
-                                                            <a href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(toVenmo)}&amount=${amountDisplay}&note=${encodeURIComponent(`Expense Split for ${group.name}`)}`} className="btn" style={{ background: "#008CFF", color: "white", fontSize: "0.85rem", padding: "0.4rem 0.8rem", height: "auto" }} target="_blank" rel="noreferrer">
-                                                                Pay
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                                <span key={currCode} style={{ background: "rgba(255,255,255,0.1)", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                                                    1 {currCode} = {rate.toFixed(4)} {baseCurrency}
+                                                </span>
                                             );
                                         })}
                                     </div>
                                 </div>
                             );
+                        }
+                        return null;
+                    })()}
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                        {Object.entries(totalSpendByCurrency).map(([currency, amount]) => (
+                            <div key={currency} className="flex justify-between items-center">
+                                <span>Total in {currency}</span>
+                                <span style={{ fontWeight: "bold" }}>{(amount / 100).toFixed(2)}</span>
+                            </div>
+                        ))}
+                        {Object.keys(totalSpendByCurrency).length > 0 && (
+                            <div className="flex justify-between" style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px dashed var(--card-border)" }}>
+                                <span style={{ color: "var(--primary)" }}>Grand Total ({baseCurrency} eqv.)</span>
+                                <span style={{ fontWeight: "bold", fontSize: "1.1rem", color: "var(--primary)" }}>{(grandTotalSpendBase / 100).toFixed(2)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === "debts" && group.isClosed && (
+                <div className="glass-card" style={{ animation: "fadeIn 0.3s ease" }}>
+                    <h3 style={{ marginBottom: "1.5rem", borderBottom: "1px solid var(--card-border)", paddingBottom: "0.5rem" }}>Who owes whom?</h3>
+
+                    {transactions.length === 0 ? (
+                        <p className="text-center text-muted">No one owes anything! Everything is perfectly balanced.</p>
+                    ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                            {Object.entries(
+                                transactions.reduce((acc, t) => {
+                                    acc[t.to] = acc[t.to] || [];
+                                    acc[t.to].push(t);
+                                    return acc;
+                                }, {} as Record<string, typeof transactions>)
+                            ).map(([payeeId, payeeTransactions]) => {
+                                const payeeName = getParticipantName(payeeId);
+                                const toVenmo = getVenmoUsername(payeeId);
+
+                                return (
+                                    <div key={payeeId} style={{ background: "rgba(15, 23, 42, 0.4)", borderRadius: "12px", border: "1px solid var(--card-border)", overflow: "hidden" }}>
+                                        <div style={{ padding: "1rem 1.5rem", background: "rgba(255, 255, 255, 0.05)", borderBottom: "1px solid var(--card-border)" }}>
+                                            <h4 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "bold" }}>
+                                                Payments to <span style={{ color: "var(--primary)" }}>{payeeName}</span>
+                                            </h4>
+                                        </div>
+
+                                        <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                            {payeeTransactions.map((t, idx) => {
+                                                const payerName = getParticipantName(t.from);
+                                                const amountDisplay = (t.amount / 100).toFixed(2);
+
+                                                return (
+                                                    <div key={idx} className="flex justify-between items-center" style={{ paddingBottom: "1rem", borderBottom: idx < payeeTransactions.length - 1 ? "1px solid var(--card-border)" : "none" }}>
+                                                        <div style={{ fontSize: "1.1rem" }}>
+                                                            <strong>{payerName}</strong> owes
+                                                        </div>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                                            <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--foreground)" }}>
+                                                                {baseCurrency} {amountDisplay}
+                                                            </span>
+                                                            {toVenmo && (
+                                                                <a href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(toVenmo)}&amount=${amountDisplay}&note=${encodeURIComponent(`Expense Split for ${group.name}`)}`} className="btn" style={{ background: "#008CFF", color: "white", fontSize: "0.85rem", padding: "0.4rem 0.8rem", height: "auto" }} target="_blank" rel="noreferrer">
+                                                                    Pay
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === "ledgers" && (
+                <div className="glass-card mb-4" style={{ animation: "fadeIn 0.3s ease" }}>
+                    <h3 style={{ marginBottom: "1rem", borderBottom: "1px solid var(--card-border)", paddingBottom: "0.5rem" }}>Individual Ledgers</h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        {group.participants.map((p: any) => {
+                            const ledger = perPersonLedger[p.id] || [];
+                            const netBalance = balances[p.id] || 0;
+                            if (ledger.length === 0) return null;
+
+                            return (
+                                <details key={p.id} style={{ background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--card-border)" }}>
+                                    <summary style={{ padding: "1rem", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: "bold", userSelect: "none" }}>
+                                        <span>{p.name}</span>
+                                        <span style={{
+                                            color: netBalance > 0 ? "var(--secondary)" : netBalance < 0 ? "var(--destructive)" : "inherit"
+                                        }}>
+                                            {netBalance > 0 ? `Lent ${baseCurrency} ${(netBalance / 100).toFixed(2)}` : netBalance < 0 ? `Owes ${baseCurrency} ${(Math.abs(netBalance) / 100).toFixed(2)}` : "Settled (0.00)"}
+                                        </span>
+                                    </summary>
+                                    <div style={{ padding: "0 1rem 1rem 1rem", fontSize: "0.9rem", overflowX: "auto" }}>
+                                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "300px" }}>
+                                            <thead>
+                                                <tr style={{ borderBottom: "1px solid var(--card-border)", textAlign: "left", color: "var(--text-muted)" }}>
+                                                    <th style={{ padding: "0.5rem 0" }}>Expense</th>
+                                                    <th style={{ padding: "0.5rem 0", textAlign: "right" }}>Paid</th>
+                                                    <th style={{ padding: "0.5rem 0", textAlign: "right" }}>Share</th>
+                                                    <th style={{ padding: "0.5rem 0", textAlign: "right" }}>Net</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ledger.map((entry: any) => (
+                                                    <tr key={entry.expenseId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                                        <td style={{ padding: "0.5rem 0" }}>
+                                                            <div>{entry.description}</div>
+                                                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{entry.originalCurrency} ${(entry.originalAmount / 100).toFixed(2)}</div>
+                                                        </td>
+                                                        <td style={{ padding: "0.5rem 0", textAlign: "right", color: entry.paidConvert > 0 ? "var(--secondary)" : "inherit" }}>
+                                                            {entry.paidConvert > 0 ? `${baseCurrency} ${(entry.paidConvert / 100).toFixed(2)}` : "-"}
+                                                        </td>
+                                                        <td style={{ padding: "0.5rem 0", textAlign: "right", color: entry.owedConvert > 0 ? "var(--destructive)" : "inherit" }}>
+                                                            {entry.owedConvert > 0 ? `${baseCurrency} ${(entry.owedConvert / 100).toFixed(2)}` : "-"}
+                                                        </td>
+                                                        <td style={{ padding: "0.5rem 0", textAlign: "right", fontWeight: "bold", color: entry.netConvert > 0 ? "var(--secondary)" : entry.netConvert < 0 ? "var(--destructive)" : "inherit" }}>
+                                                            {entry.netConvert > 0 ? "+" : ""}{(entry.netConvert / 100).toFixed(2)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr style={{ fontWeight: "bold" }}>
+                                                    <td style={{ padding: "0.75rem 0" }}>Total Net</td>
+                                                    <td colSpan={3} style={{ padding: "0.75rem 0", textAlign: "right", color: netBalance > 0 ? "var(--secondary)" : netBalance < 0 ? "var(--destructive)" : "inherit" }}>
+                                                        {baseCurrency} {(netBalance / 100).toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </details>
+                            );
                         })}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             <div className="mt-4" style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
                 Total Group Expenses: {group.expenses.length} records.
