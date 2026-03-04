@@ -456,32 +456,49 @@ export default function GroupPage() {
                         </div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            {group.expenses.map((expense: ExpenseExtended) => (
-                                <div key={expense.id} className="glass-card" style={{ padding: "1.5rem" }}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h4 style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{expense.description}</h4>
-                                        <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--primary)" }}>
-                                            {expense.currency} {(expense.amount / 100).toFixed(2)}
-                                        </span>
-                                    </div>
+                            {group.expenses.map((expense: ExpenseExtended) => {
+                                const isNotEqualSplit = expense.splits.some((s: any) => s.splitType !== "EQUAL");
 
-                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                                        <p>
-                                            <strong>Paid by:</strong> {expense.payers.map((p: any) => `${p.participant.name} (${expense.currency} ${(p.amountPaid / 100).toFixed(2)})`).join(", ")}
-                                        </p>
-                                        <p className="mt-1">
-                                            <strong>Split between:</strong> {expense.splits.length === group.participants.length ? `All (${group.participants.length})` : expense.splits.map((s: any) => s.participant.name).join(", ")}
-                                        </p>
-                                    </div>
+                                return (
+                                    <details key={expense.id} className="glass-card" style={{ padding: 0, overflow: "hidden" }}>
+                                        <summary style={{ padding: "1.5rem", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", outline: "none", userSelect: "none" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                                <span style={{ color: "var(--text-muted)", display: "flex", alignItems: "center" }}>
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s" }} className="expand-icon">
+                                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                                    </svg>
+                                                </span>
+                                                <h4 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0 }}>{expense.description}</h4>
+                                            </div>
+                                            <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--primary)" }}>
+                                                {expense.currency} {(expense.amount / 100).toFixed(2)}
+                                            </span>
+                                        </summary>
 
-                                    {isAdmin && !group.isClosed && (
-                                        <div style={{ marginTop: "1rem", textAlign: "right", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-                                            <Link href={`/group/${id}/expenses/${expense.id}/edit`} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Edit</Link>
-                                            <button onClick={() => deleteExpense(expense.id)} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Delete</button>
+                                        <div style={{ padding: "0 1.5rem 1.5rem 1.5rem", fontSize: "0.85rem", color: "var(--text-muted)", borderTop: "1px solid var(--card-border)", paddingTop: "1rem" }}>
+                                            <p>
+                                                <strong>Paid by:</strong> {expense.payers.map((p: any) => `${p.participant.name} (${expense.currency} ${(p.amountPaid / 100).toFixed(2)})`).join(", ")}
+                                            </p>
+                                            <p className="mt-1">
+                                                <strong>Split between:</strong> {
+                                                    expense.splits.length === group.participants.length && !isNotEqualSplit
+                                                        ? `All (${group.participants.length})`
+                                                        : isNotEqualSplit
+                                                            ? expense.splits.map((s: any) => `${s.participant.name} (${expense.currency} ${(s.amountSplit / 100).toFixed(2)})`).join(", ")
+                                                            : expense.splits.map((s: any) => s.participant.name).join(", ")
+                                                }
+                                            </p>
+
+                                            {isAdmin && !group.isClosed && (
+                                                <div style={{ marginTop: "1rem", textAlign: "right", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+                                                    <Link href={`/group/${id}/expenses/${expense.id}/edit`} className="btn btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Edit</Link>
+                                                    <button onClick={() => deleteExpense(expense.id)} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Delete</button>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+                                    </details>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
