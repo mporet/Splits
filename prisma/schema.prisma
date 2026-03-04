@@ -63,12 +63,14 @@ model ExpenseGroup {
   finalCurrency          String             @default("USD")
   defaultExpenseCurrency String             @default("USD")
   isClosed               Boolean            @default(false)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  settlementData         String?            // JSON string containing ledger, exchange rates, total spend, etc.
 
   admin         User               @relation(fields: [adminId], references: [id], onDelete: Cascade)
   participants  GroupParticipant[]
   expenses      Expense[]
+  debts         SettlementDebt[]
 }
 
 model GroupParticipant {
@@ -118,4 +120,17 @@ model ExpenseSplit {
 
   expense       Expense          @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   participant   GroupParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+model SettlementDebt {
+  id        String   @id @default(cuid())
+  groupId   String
+  fromId    String
+  toId      String
+  amount    Int      // Cents
+  isPaid    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group     ExpenseGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }

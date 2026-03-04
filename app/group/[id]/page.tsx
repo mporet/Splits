@@ -29,6 +29,22 @@ export default function GroupPage() {
     const [savedGroups, setSavedGroups] = useState<{ id: string, name: string }[]>([]);
 
     const [activeTab, setActiveTab] = useState<"expenses" | "summary" | "ledgers" | "debts">("expenses");
+    const [debtToMarkPaid, setDebtToMarkPaid] = useState<Transaction | null>(null);
+
+    const markDebtAsPaid = async (debtId: string, isPaid: boolean) => {
+        try {
+            const res = await fetch(`/api/groups/${id}/settlement/${debtId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isPaid })
+            });
+            if (res.ok) {
+                fetchSettlement(); // Refresh UI
+            }
+        } catch (e) {
+            console.error("Failed to mark debt", e);
+        }
+    };
     const [settlementData, setSettlementData] = useState<{
         rates: Record<string, number>;
         totalSpendByCurrency: Record<string, number>;
@@ -349,19 +365,56 @@ export default function GroupPage() {
                                                 const payerName = getParticipantName(t.from);
                                                 const amountDisplay = (t.amount / 100).toFixed(2);
 
+                                                const isPaid = t.isPaid;
+                                                const textColor = isPaid ? "var(--secondary)" : "var(--foreground)";
+
                                                 return (
                                                     <div key={idx} className="flex justify-between items-center" style={{ paddingBottom: "1rem", borderBottom: idx < payeeTransactions.length - 1 ? "1px solid var(--card-border)" : "none" }}>
                                                         <div style={{ fontSize: "1.1rem" }}>
-                                                            <strong>{payerName}</strong> owes
+                                                            <strong style={{ textDecoration: isPaid ? 'line-through' : 'none', color: isPaid ? "var(--text-muted)" : "inherit" }}>{payerName}</strong> {isPaid ? <span style={{ color: "var(--secondary)", fontWeight: "bold" }}>paid</span> : "owes"}
                                                         </div>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                                            <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "var(--foreground)" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                                            <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: textColor, textDecoration: isPaid ? 'line-through' : 'none' }}>
                                                                 {baseCurrency} {amountDisplay}
                                                             </span>
-                                                            {toVenmo && (
-                                                                <a href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(toVenmo)}&amount=${amountDisplay}&note=${encodeURIComponent(`Expense Split for ${group.name}`)}`} className="btn" style={{ background: "#008CFF", color: "white", fontSize: "0.85rem", padding: "0.4rem 0.8rem", height: "auto" }} target="_blank" rel="noreferrer">
+
+                                                            {!isPaid && (
+                                                                <button
+                                                                    className="btn btn-secondary"
+                                                                    style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", height: "auto" }}
+                                                                    onClick={() => setDebtToMarkPaid(t)}
+                                                                >
+                                                                    Mark Paid
+                                                                </button>
+                                                            )}
+
+                                                            {toVenmo && !isPaid && (
+                                                                <button
+                                                                    className="btn"
+                                                                    style={{ background: "#008CFF", color: "white", fontSize: "0.85rem", padding: "0.4rem 0.8rem", height: "auto" }}
+                                                                    onClick={() => {
+                                                                        if (confirm("Would you like to mark this debt as paid before transferring?")) {
+                                                                            if (t.id) markDebtAsPaid(t.id, true);
+                                                                        }
+                                                                        window.open(`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(toVenmo)}&amount=${amountDisplay}&note=${encodeURIComponent(`Expense Split for ${group.name}`)}`, "_blank");
+                                                                    }}
+                                                                >
                                                                     Pay
-                                                                </a>
+                                                                </button>
+                                                            )}
+
+                                                            {isPaid && isAdmin && (
+                                                                <button
+                                                                    className="btn btn-danger"
+                                                                    style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", height: "auto" }}
+                                                                    onClick={() => {
+                                                                        if (confirm("Unmark this debt as paid?")) {
+                                                                            if (t.id) markDebtAsPaid(t.id, false);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Unmark Paid
+                                                                </button>
                                                             )}
                                                         </div>
                                                     </div>
@@ -501,6 +554,28 @@ export default function GroupPage() {
                             })}
                         </div>
                     )}
+                </div>
+            )}
+
+            {debtToMarkPaid && (
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
+                    <div className="glass-card" style={{ maxWidth: "400px", width: "100%", padding: "2rem" }}>
+                        <h3 className="mb-4">Confirm Payment</h3>
+                        <p className="mb-4 text-muted">Are you sure you want to mark this debt as paid?</p>
+                        <p className="mb-4 text-center">
+                            <strong>{getParticipantName(debtToMarkPaid.from)}</strong> pays <strong>{getParticipantName(debtToMarkPaid.to)}</strong><br />
+                            <span style={{ fontSize: "1.5rem", fontWeight: "bold", color: "var(--foreground)" }}>{baseCurrency} {(debtToMarkPaid.amount / 100).toFixed(2)}</span>
+                        </p>
+                        <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                            <button className="btn btn-secondary" onClick={() => setDebtToMarkPaid(null)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={() => {
+                                if (debtToMarkPaid.id) {
+                                    markDebtAsPaid(debtToMarkPaid.id, true);
+                                }
+                                setDebtToMarkPaid(null);
+                            }}>Confirm Paid</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

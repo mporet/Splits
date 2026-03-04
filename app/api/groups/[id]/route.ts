@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
+import { calculateSettlement } from "@/lib/calculateSettlement";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
@@ -59,10 +60,47 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // If only isClosed is provided (from the quick close/reopen button)
     if (Object.keys(body).length === 1 && 'isClosed' in body) {
-        const updatedGroup = await prisma.expenseGroup.update({
-            where: { id: groupId },
-            data: { isClosed: body.isClosed }
-        });
+        if (body.isClosed) {
+            // Calculate and freeze settlement data
+            const activeGroup = await prisma.expenseGroup.findUnique({
+                where: { id: groupId },
+                include: { participants: true, expenses: { include: { payers: true, splits: true } } }
+            });
+            if (!activeGroup) return NextResponse.json({ error: "Group not found" }, { status: 404 });
+
+            const result = await calculateSettlement(activeGroup as any);
+            const { transactions, ...settlementData } = result;
+
+            await prisma.expenseGroup.update({
+                where: { id: groupId },
+                data: {
+                    isClosed: true,
+                    settlementData: JSON.stringify(settlementData),
+                    debts: {
+                        create: transactions.map((t: any) => ({
+                            fromId: t.from,
+                            toId: t.to,
+                            amount: t.amount,
+                            isPaid: false
+                        }))
+                    }
+                }
+            });
+        } else {
+            // Reopen group: clear frozen settlement
+            await prisma.expenseGroup.update({
+                where: { id: groupId },
+                data: {
+                    isClosed: false,
+                    settlementData: null,
+                    debts: {
+                        deleteMany: {}
+                    }
+                }
+            });
+        }
+
+        const updatedGroup = await prisma.expenseGroup.findUnique({ where: { id: groupId } });
         return NextResponse.json(updatedGroup);
     }
 

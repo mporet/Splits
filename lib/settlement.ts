@@ -1,9 +1,11 @@
 // Settlement Algorithm implementation
 
 export interface Transaction {
+    id?: string; // id of the SettlementDebt
     from: string; // participant id
     to: string; // participant id
     amount: number; // in cents
+    isPaid?: boolean;
 }
 
 // Balances: positive means they are owed money, negative means they owe money
